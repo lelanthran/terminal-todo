@@ -41,9 +41,9 @@ function list () {
 }
 
 function show () {
-   [ -z "$TASKID" ] && die "Missing task ID, use -t or --task-id"
-   echo "$DBSHOW1$TASKID" | $SQLITE $DB
-   echo "$DBSHOW2$TASKID" | $SQLITE $DB
+   [ -z "$1" ] && die "Missing task ID"
+   echo "$DBSHOW1$1" | $SQLITE $DB
+   echo "$DBSHOW2$1" | $SQLITE $DB
 }
 
 function add () {
@@ -70,9 +70,10 @@ function add () {
 }
 
 function set_priority () {
-   export PRIORITY="$1"
+   export PRIORITY="$2"
+   export TASKID="$1"
 
-   [ -z "$TASKID" ] && die "Missing task ID, use -t or --task-id"
+   [ -z "$TASKID" ] && die "Missing task ID"
    [ -z "$PRIORITY" ] && die "No priority supplied for set-priority"
 
    echo "update tasks set c_priority=$PRIORITY where c_id=$TASKID" \
@@ -80,9 +81,11 @@ function set_priority () {
 }
 
 function set_title () {
+   export TASKID="$1"
+   shift
    export TITLE="$*"
 
-   [ -z "$TASKID" ] && die "Missing task ID, use -t or --task-id"
+   [ -z "$TASKID" ] && die "Missing task ID"
    [ -z "$TITLE" ] && die "No title supplied for set-title"
 
    echo "update tasks set c_title='$TITLE' where c_id=$TASKID" \
@@ -90,6 +93,8 @@ function set_title () {
 }
 
 function set_message () {
+   export TASKID="$1"
+   shift
    export BODY="$*"
 
    if [ -z "$BODY" ]; then
@@ -124,12 +129,91 @@ function search_db () {
    echo "$DBLIST $WCLAUSE" | $SQLITE $DB
 }
 
+function delete_task () {
+   export TASKID="$1"
+
+   [ -z "$TASKID" ] && die "Missing task ID"
+
+   export TITLE="`echo select c_title from tasks where c_id=1 | sqlite3 $DB`"
+
+   if [ -z "$FORCE" ]; then
+      echo "Are you sure you want to delete task '$TITLE'? (Y/n)"
+      read LINE
+      if [ "$LINE" != "Y" ]; then
+         echo "Not deleting task '$TITLE'"
+         exit 0;
+      fi
+   fi
+
+   echo "delete from tasks where c_id=$TASKID" \
+         | $SQLITE $DB
+}
+
+function prune () {
+   echo "delete from tasks where c_priority<0" \
+         | $SQLITE $DB
+}
+
+
 function createdb () {
    [ -f $DB ] && return 0
    echo $DBSCHEMA | $SQLITE $DB
 }
 
-$SQLITE --version || die "No $SQLITE program found"
+function print_help_msg () {
+   echo "Terminal-Todo: Maintain a list of tasks ith priorities"
+   echo "todo <command> [options]"
+   echo "todo <command> [options] <command-arguments>"
+   echo "todo [options] <command> <command-arguments>"
+   echo '
+Commands:
+   list
+         Display all tasks. The list can be sorted with "--sort-by=<column>"
+      or "-s <column>" where <column> is a column name. Use the option
+      "-r" or "--reverse" to reverse the sort order.
+         If no sort column is specified the list is sorted by the task IDs.
+
+   add <title> [message-body]
+         Add a new task to the list. The <title> is mandatory. If a [message-
+      body] is not specified then an editor will be started to prompt for a
+      message. Use "--editor=<editor>" or "-e <editor>" to specify an editor.
+      If no editor is specified then the $EDITOR environment variable will be
+      used.
+
+   show <task-id>
+         Display all fields of the specified task.
+
+   set-priority <task-id> <new-priority>
+         Sets the priority for task <task-id> to <new-priority>
+
+   set-title <task-id> <new-title>
+         Sets the title for task <task-id> to <new-title>
+
+   set-message <task-id> <new-message-body>
+         Sets the message body for task <task-id> to <new-message-body>
+
+   search <search-term> [<search-term>]
+         Searches all task'"'"'s title and message body fields for the specified
+      search terms. By default the search matches ANY of the terms specified.
+      To match ALL the terms specified use "-a" or "-all".
+
+   prune
+         Removes all tasks from the list that are at priority -1 or lower. This
+      is a convenient way to mark tasks that must be removed without actually
+      removing the task. Tasks that are at priority -1 can later be re-
+      prioritised.
+
+   delete <task-id>
+         Permanently removes a task from the list. There is no way to resurrect
+      a deleted task. To temporarily mark a task for deletion set the priority
+      to -1. If you later change your mind about the task AND you haven'"'"'t
+      pruned the task list, you can re-prioritise the task to a positive number.
+         Deletion will prompt the user. To force deletion without a prompt use
+      "-f" or "--force".
+'
+}
+
+$SQLITE --version &> /dev/null || die "No $SQLITE program found"
 
 createdb
 
@@ -143,6 +227,14 @@ PRIORITY=0
 
 while (( "$#" )); do
   case "$1" in
+     -h|--help)
+         print_help_msg
+         exit 0
+         ;;
+     -f|--force)
+         FORCE="true"
+         shift 1
+         ;;
      -a|--all)
          CONJ=" AND "
          shift 1
@@ -178,18 +270,13 @@ while (( "$#" )); do
          [ -z "$SORTBY" ] && die "Missing sort column for --sort-by"
          shift
          ;;
-     -t)
-         TASKID=$2
-         shift 2
-         ;;
-     --task-id=*)
-         TASKID=`echo $1 | cut -f 2 -d =`
-         [ -z "$TASKID" ] && die "Missing ID for --task-id"
-         shift
-         ;;
      -r|--reverse)
          ORDER_DIR="desc"
          shift 1
+         ;;
+    -[0-9]*)
+         PARAMS="$PARAMS $1"
+         shift
          ;;
     -*|--*) # unsupported flags
          echo "Error: Unsupported flag $1" >&2
@@ -234,6 +321,19 @@ case $CMD in
 
    search)
       search_db $PARAMS
+      ;;
+
+   delete)
+      delete_task $PARAMS
+      ;;
+
+   prune)
+      prune $PARAMS
+      ;;
+
+   --help)
+      print_help_msg
+      exit 0
       ;;
 
    *)
