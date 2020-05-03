@@ -1,7 +1,24 @@
 #!/bin/bash
 
 # set -x
-export DB=.todo-db.sql
+
+# If there is global file for the user, we use it...
+if [ -f $HOME/.todo-db.sql ]; then
+   DB=$HOME/.todo-db.sql
+fi
+
+# Unless we find one in the PWD, in which case we prefer
+# the local directory database to the users home directory
+# database.
+if [ -f .todo-db.sql ]; then
+   DB=.todo-db.sql
+fi
+
+# If nothing was found, we create one in the local dir
+if [ -z "$DB" ]; then
+   DB=.todo-db.sql
+fi
+
 export SQLITE="sqlite3 -column -header"
 export DBSCHEMA="create table tasks (\
                      c_id          INTEGER PRIMARY KEY, \
