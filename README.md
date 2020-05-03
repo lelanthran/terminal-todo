@@ -24,14 +24,17 @@ Usage is as follows:
 
 #Commands
 
-`list`
+`createdb`
+> Creates a new database in the current directory
+
+`list [-s column | --sorted-by-<column>]`
 
 > Display all tasks. The list can be sorted with "--sort-by=`<column>`"
 > or "-s `<column>`" where `<column>` is a column name. Use the option
 > "-r" or "--reverse" to reverse the sort order.
 > If no sort column is specified the list is sorted by the task IDs.
 
-`add <title> [message-body]`
+`add <title> [message-body] [-e <editor> | --editor=<editor>]`
 
 > Add a new task to the list. The `<title>` is mandatory. If a `[message-
 > body]` is not specified then an editor will be started to prompt for a
@@ -55,7 +58,7 @@ Usage is as follows:
 
 > Sets the message body for task `<task-id>` to `<new-message-body>`.
 
-`search <search-term> [<search-term>]`
+`search <search-term> [<search-term>] [-a | --all]`
 
 > Searches all task's title and message body fields for the specified
 > search terms. By default the search matches ANY of the terms specified.
@@ -68,7 +71,7 @@ Usage is as follows:
 > removing the task. Tasks that are at priority -1 can later be re-
 > prioritised.
 
-`delete <task-id>`
+`delete <task-id> [-f | --force]`
 
 > Permanently removes a task from the list. There is no way to resurrect
 > a deleted task. To temporarily mark a task for deletion set the priority

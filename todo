@@ -2,21 +2,18 @@
 
 # set -x
 
-# If there is global file for the user, we use it...
-if [ -f $HOME/.todo-db.sql ]; then
+# If we find a tasklist in the PWD we use it. If we don't we use the tasklist
+# in the users home directory.
+if [ -f .todo-db.sql ]; then
+   DB=.todo-db.sql
+else
    DB=$HOME/.todo-db.sql
 fi
 
-# Unless we find one in the PWD, in which case we prefer
-# the local directory database to the users home directory
-# database.
-if [ -f .todo-db.sql ]; then
-   DB=.todo-db.sql
-fi
-
-# If nothing was found, we create one in the local dir
-if [ -z "$DB" ]; then
-   DB=.todo-db.sql
+# If the file does not exist, then error out.
+if [ ! -f "$DB" ]; then
+   echo "No database file found. Use the 'createdb' command to create one"
+   exit 1
 fi
 
 export SQLITE="sqlite3 -column -header"
@@ -182,7 +179,7 @@ function print_help_msg () {
 Terminal-Todo: Maintain a list of tasks with priorities. The tasklist is
 resolved as follows:
    - If a tasklist exists in $HOME it will be used,
-   - If a tasklist exists in $PWD, then it will be used in preference to the
+   - If a tasklist exists in $PWD, then it will be used instead of the
      tasklist in $HOME.
    - If no tasklist is found, then one is created in $PWD.
 
@@ -196,13 +193,16 @@ To create a tasklist in $HOME, simply change directory to $HOME and run any
    echo "todo <command> <command-arguments> [options]"
    echo '
 Commands:
-   list
+   createdb
+         Creates a new database in the current directory.
+
+   list [-s column | --sorted-by-<column>]
          Display all tasks. The list can be sorted with "--sort-by=<column>"
       or "-s <column>" where <column> is a column name. Use the option
       "-r" or "--reverse" to reverse the sort order.
          If no sort column is specified the list is sorted by the task IDs.
 
-   add <title> [message-body]
+   add <title> [message-body] [-e <editor> | --editor=<editor>]
          Add a new task to the list. The <title> is mandatory. If a [message-
       body] is not specified then an editor will be started to prompt for a
       message. Use "--editor=<editor>" or "-e <editor>" to specify an editor.
@@ -221,7 +221,7 @@ Commands:
    set-message <task-id> <new-message-body>
          Sets the message body for task <task-id> to <new-message-body>.
 
-   search <search-term> [<search-term>]
+   search <search-term> [<search-term>] [-a | --all]
          Searches all task'"'"'s title and message body fields for the specified
       search terms. By default the search matches ANY of the terms specified.
       To match ALL the terms specified use "-a" or "-all".
@@ -232,7 +232,7 @@ Commands:
       removing the task. Tasks that are at priority -1 can later be re-
       prioritised.
 
-   delete <task-id>
+   delete <task-id> [f | --force]
          Permanently removes a task from the list. There is no way to resurrect
       a deleted task. To temporarily mark a task for deletion set the priority
       to -1. If you later change your mind about the task AND you haven'"'"'t
@@ -243,8 +243,6 @@ Commands:
 }
 
 $SQLITE --version &> /dev/null || die "No $SQLITE program found"
-
-createdb
 
 CMD=$1
 shift
