@@ -178,7 +178,18 @@ function createdb () {
 }
 
 function print_help_msg () {
-   echo "Terminal-Todo: Maintain a list of tasks with priorities"
+   echo '
+Terminal-Todo: Maintain a list of tasks with priorities. The tasklist is
+resolved as follows:
+   - If a tasklist exists in $HOME it will be used,
+   - If a tasklist exists in $PWD, then it will be used in preference to the
+     tasklist in $HOME.
+   - If no tasklist is found, then one is created in $PWD.
+
+To create a tasklist in $HOME, simply change directory to $HOME and run any
+`todo` command.
+
+'
    echo "todo <command> [options]"
    echo "todo <command> [options] <command-arguments>"
    echo "todo [options] <command> <command-arguments>"

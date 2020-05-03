@@ -4,8 +4,18 @@ A command-line driven TODO list manager.
 
 # SYNPOSIS
 
-Terminal-Todo: Maintain a list of tasks with priorities. Usage is
-as follows:
+Terminal-Todo: Maintain a list of tasks with priorities. The tasklist is
+resolved as follows:
+
+- If a tasklist exists in $HOME it will be used,
+- If a tasklist exists in $PWD, then it will be used instead of the
+  tasklist in $HOME.
+- If no tasklist is found, then one is created in $PWD.
+
+To create a tasklist in $HOME, simply change directory to $HOME and run any
+`todo` command.
+
+Usage is as follows:
 
 - `todo <command> [options]`
 - `todo <command> [options] <command-arguments>`
