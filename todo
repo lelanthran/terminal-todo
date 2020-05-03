@@ -165,6 +165,7 @@ function print_help_msg () {
    echo "todo <command> [options]"
    echo "todo <command> [options] <command-arguments>"
    echo "todo [options] <command> <command-arguments>"
+   echo "todo <command> <command-arguments> [options]"
    echo '
 Commands:
    list
