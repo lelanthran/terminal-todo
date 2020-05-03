@@ -185,13 +185,13 @@ Commands:
          Display all fields of the specified task.
 
    set-priority <task-id> <new-priority>
-         Sets the priority for task <task-id> to <new-priority>
+         Sets the priority for task <task-id> to <new-priority>.
 
    set-title <task-id> <new-title>
-         Sets the title for task <task-id> to <new-title>
+         Sets the title for task <task-id> to <new-title>.
 
    set-message <task-id> <new-message-body>
-         Sets the message body for task <task-id> to <new-message-body>
+         Sets the message body for task <task-id> to <new-message-body>.
 
    search <search-term> [<search-term>]
          Searches all task'"'"'s title and message body fields for the specified
