@@ -161,7 +161,7 @@ function createdb () {
 }
 
 function print_help_msg () {
-   echo "Terminal-Todo: Maintain a list of tasks ith priorities"
+   echo "Terminal-Todo: Maintain a list of tasks with priorities"
    echo "todo <command> [options]"
    echo "todo <command> [options] <command-arguments>"
    echo "todo [options] <command> <command-arguments>"
