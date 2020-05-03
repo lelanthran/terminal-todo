@@ -1,66 +1,242 @@
 #!/bin/bash
 
+# set -x
 export DB=.todo-db.sql
-export SQLITE="sqlite3 -header"
+export SQLITE="sqlite3 -column -header"
 export DBSCHEMA="create table tasks (\
-                     id       INTEGER PRIMARY KEY, \
-                     parent   INTEGER,\
-                     content  TEXT);"
+                     c_id          INTEGER PRIMARY KEY, \
+                     c_priority    INTEGER,\
+                     c_title       TEXT,\
+                     c_body        TEXT);"
 
-export DBLIST="select id, parent, content from tasks order by id;"
+export DBLIST="select c_id as ID, c_priority as Priority, c_title as Title from tasks"
+export DBSHOW1="select c_id as ID, c_priority as Priority, c_title as Title from tasks where c_id="
+export DBSHOW2="select  c_body as 'Message Body' from tasks where c_id="
 
 function die () {
-   echo $*
+   echo $@
    exit -1
 }
 
 function list () {
-   echo $DBLIST | $SQLITE $DB
+   export ORDER_COL="order by c_$SORTBY"
+   case ${sort-order} in
+
+      id)
+         ORDER_COL="order by c_id";
+         ;;
+
+      priority)
+         ORDER_COL="order by c_priority";
+         ;;
+
+      title)
+         ORDER_COL="order by c_title";
+         ;;
+
+   esac
+
+   SQLCMD="$DBLIST $ORDER_COL $ORDER_DIR"
+   echo $SQLCMD | $SQLITE $DB
 }
 
-function push () {
-   [ -z "$1" ] && die "Need to specify the parent ID".
-   export CONTENT=`cat`
-   echo "$CONTENT"
-   echo "insert into tasks (parent, content) values ($1, '$CONTENT');"
-   echo "insert into tasks (parent, content) values ($1, '$CONTENT');" | $SQLITE $DB
-   echo $*
+function show () {
+   [ -z "$TASKID" ] && die "Missing task ID, use -t or --task-id"
+   echo "$DBSHOW1$TASKID" | $SQLITE $DB
+   echo "$DBSHOW2$TASKID" | $SQLITE $DB
 }
 
-function pop () {
-   echo Function pop
-   echo $*
+function add () {
+   export TITLE="${PARAMS[0]}"
+   export BODY="${PARAMS[1]}"
+
+   [ -z "$TITLE" ] && die "No title supplied for add function"
+
+   if [ -z "$BODY" ]; then
+      if [ ! -z "$EDITOR" ]; then
+         FNAME=`tempfile`
+         $EDITOR $FNAME && export BODY="`cat $FNAME`"
+         rm -f $FNAME
+      else
+         export BODY=`cat`
+      fi
+   fi
+
+   [ -z "$BODY" ] && die "No message body specified for task"
+
+   echo "insert into tasks (c_title, c_priority, c_body) values\
+                           ('$TITLE', '$PRIORITY', '$BODY');"\
+         | $SQLITE $DB
 }
 
-function create () {
+function set_priority () {
+   export PRIORITY="$1"
+
+   [ -z "$TASKID" ] && die "Missing task ID, use -t or --task-id"
+   [ -z "$PRIORITY" ] && die "No priority supplied for set-priority"
+
+   echo "update tasks set c_priority=$PRIORITY where c_id=$TASKID" \
+         | $SQLITE $DB
+}
+
+function set_title () {
+   export TITLE="$*"
+
+   [ -z "$TASKID" ] && die "Missing task ID, use -t or --task-id"
+   [ -z "$TITLE" ] && die "No title supplied for set-title"
+
+   echo "update tasks set c_title='$TITLE' where c_id=$TASKID" \
+         | $SQLITE $DB
+}
+
+function set_message () {
+   export BODY="$*"
+
+   if [ -z "$BODY" ]; then
+      if [ ! -z "$EDITOR" ]; then
+         FNAME=`tempfile`
+         $EDITOR $FNAME && export BODY="`cat $FNAME`"
+         rm -f $FNAME
+      else
+         export BODY=`cat`
+      fi
+   fi
+
+   [ -z "$BODY" ] && die "No message body specified for task"
+
+   echo "update tasks set c_body='$BODY' where c_id=$TASKID" \
+         | $SQLITE $DB
+}
+
+function search_db () {
+
+   [ -z "$*" ] && die "No search terms specified"
+
+   WCLAUSE="where (c_title like '%$1%' OR c_body like '%$1%') "
+   shift
+
+   for X in $*; do
+      WCLAUSE="$WCLAUSE $CONJ (c_title like '%$X%' OR c_body like '%$X%') "
+   done
+
+   echo $WCLAUSE
+
+   echo "$DBLIST $WCLAUSE" | $SQLITE $DB
+}
+
+function createdb () {
    [ -f $DB ] && return 0
    echo $DBSCHEMA | $SQLITE $DB
-   echo "Initial task" | push 1
 }
 
 $SQLITE --version || die "No $SQLITE program found"
 
-create
+createdb
 
 CMD=$1
 shift
 
+CONJ=" OR "
+ORDER_DIR="asc"
+SORTBY="id"
+PRIORITY=0
+
+while (( "$#" )); do
+  case "$1" in
+     -a|--all)
+         CONJ=" AND "
+         shift 1
+         ;;
+     -y|--any)
+         CONJ=" OR "
+         shift 1
+         ;;
+     -e)
+         EDITOR=$2
+         shift 2
+         ;;
+     --editor=*)
+         EDITOR=`echo $1 | cut -f 2 -d =`
+         [ -z "$EDITOR" ] && die "Missing editor program for --editor"
+         shift
+         ;;
+     -p)
+         PRIORITY=$2
+         shift 2
+         ;;
+     --priority=*)
+         PRIORITY=`echo $1 | cut -f 2 -d =`
+         [ -z "$PRIORITY" ] && die "Missing priority number for --priority"
+         shift
+         ;;
+     -s)
+         SORTBY=$2
+         shift 2
+         ;;
+     --sort-by=*)
+         SORTBY=`echo $1 | cut -f 2 -d =`
+         [ -z "$SORTBY" ] && die "Missing sort column for --sort-by"
+         shift
+         ;;
+     -t)
+         TASKID=$2
+         shift 2
+         ;;
+     --task-id=*)
+         TASKID=`echo $1 | cut -f 2 -d =`
+         [ -z "$TASKID" ] && die "Missing ID for --task-id"
+         shift
+         ;;
+     -r|--reverse)
+         ORDER_DIR="desc"
+         shift 1
+         ;;
+    -*|--*) # unsupported flags
+         echo "Error: Unsupported flag $1" >&2
+         exit 1
+         ;;
+    *) # preserve positional arguments
+         PARAMS="$PARAMS $1"
+         shift
+         ;;
+  esac
+done
+
 case $CMD in
 
-   create)
-      create $*
+   createdb)
+      createdb $PARAMS
       ;;
 
    list)
-      list $*
+      list $PARAMS
       ;;
 
-   push)
-      push $*
+   add)
+      add $PARAMS
       ;;
 
-   pop)
-      pop $*
+   show)
+      show $PARAMS
       ;;
 
+   set-priority)
+      set_priority $PARAMS
+      ;;
+
+   set-title)
+      set_title $PARAMS
+      ;;
+
+   set-message)
+      set_message $PARAMS
+      ;;
+
+   search)
+      search_db $PARAMS
+      ;;
+
+   *)
+      echo "$@" not understood.
+      ;;
 esac
