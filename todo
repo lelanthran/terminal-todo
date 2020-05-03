@@ -1,0 +1,66 @@
+#!/bin/bash
+
+export DB=.todo-db.sql
+export SQLITE="sqlite3 -header"
+export DBSCHEMA="create table tasks (\
+                     id       INTEGER PRIMARY KEY, \
+                     parent   INTEGER,\
+                     content  TEXT);"
+
+export DBLIST="select id, parent, content from tasks order by id;"
+
+function die () {
+   echo $*
+   exit -1
+}
+
+function list () {
+   echo $DBLIST | $SQLITE $DB
+}
+
+function push () {
+   [ -z "$1" ] && die "Need to specify the parent ID".
+   export CONTENT=`cat`
+   echo "$CONTENT"
+   echo "insert into tasks (parent, content) values ($1, '$CONTENT');"
+   echo "insert into tasks (parent, content) values ($1, '$CONTENT');" | $SQLITE $DB
+   echo $*
+}
+
+function pop () {
+   echo Function pop
+   echo $*
+}
+
+function create () {
+   [ -f $DB ] && return 0
+   echo $DBSCHEMA | $SQLITE $DB
+   echo "Initial task" | push 1
+}
+
+$SQLITE --version || die "No $SQLITE program found"
+
+create
+
+CMD=$1
+shift
+
+case $CMD in
+
+   create)
+      create $*
+      ;;
+
+   list)
+      list $*
+      ;;
+
+   push)
+      push $*
+      ;;
+
+   pop)
+      pop $*
+      ;;
+
+esac
