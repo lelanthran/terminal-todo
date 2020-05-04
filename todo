@@ -11,7 +11,7 @@ else
 fi
 
 # If the file does not exist, then error out.
-if [ ! -f "$DB" ]; then
+if [ ! -f "$DB" ] && [ "$1" != "createdb" ]; then
    echo "No database file found. Use the 'createdb' command to create one"
    exit 1
 fi
@@ -196,7 +196,7 @@ Commands:
    createdb
          Creates a new database in the current directory.
 
-   list [-s column | --sorted-by-<column>]
+   list [-s column | --sorted-by-<column>] [-r | --reverse]
          Display all tasks. The list can be sorted with "--sort-by=<column>"
       or "-s <column>" where <column> is a column name. Use the option
       "-r" or "--reverse" to reverse the sort order.
