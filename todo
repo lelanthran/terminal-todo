@@ -32,6 +32,10 @@ function die () {
    exit -1
 }
 
+function escape_field () {
+   echo $* | sed "s/'/''/g"
+}
+
 function list () {
    export ORDER_COL="order by c_$SORTBY"
    case ${sort-order} in
@@ -57,7 +61,9 @@ function list () {
 function show () {
    [ -z "$1" ] && die "Missing task ID"
    echo "$DBSHOW1$1" | $SQLITE $DB
-   echo "$DBSHOW2$1" | $SQLITE $DB
+   echo '-----------------------------------------------------------'
+   echo "$DBSHOW2$1" | $SQLITE -noheader $DB | fmt -w 68 -s
+   echo '-----------------------------------------------------------'
 }
 
 function add () {
@@ -77,6 +83,9 @@ function add () {
    fi
 
    [ -z "$BODY" ] && die "No message body specified for task"
+
+   TITLE="`escape_field $TITLE`"
+   BODY="`escape_field $BODY`"
 
    echo "insert into tasks (c_title, c_priority, c_body) values\
                            ('$TITLE', '$PRIORITY', '$BODY');"\
@@ -98,6 +107,8 @@ function set_title () {
    export TASKID="$1"
    shift
    export TITLE="$*"
+
+   TITLE="`escape_field $TITLE`"
 
    [ -z "$TASKID" ] && die "Missing task ID"
    [ -z "$TITLE" ] && die "No title supplied for set-title"
@@ -121,6 +132,8 @@ function set_message () {
       fi
    fi
 
+   BODY="`escape_field $BODY`"
+
    [ -z "$BODY" ] && die "No message body specified for task"
 
    echo "update tasks set c_body='$BODY' where c_id=$TASKID" \
@@ -135,10 +148,9 @@ function search_db () {
    shift
 
    for X in $*; do
+      X="`escape_field $X`"
       WCLAUSE="$WCLAUSE $CONJ (c_title like '%$X%' OR c_body like '%$X%') "
    done
-
-   echo $WCLAUSE
 
    echo "$DBLIST $WCLAUSE" | $SQLITE $DB
 }
