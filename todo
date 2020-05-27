@@ -11,7 +11,9 @@ else
 fi
 
 # If user chose createdb, we force a PWD database file
-DB=.todo-db.sql
+if [ "$1" == "createdb" ]; then
+   DB=.todo-db.sql
+fi
 
 # If the file does not exist, then error out.
 if [ ! -f "$DB" ] && [ "$1" != "createdb" ]; then
@@ -332,6 +334,11 @@ while (( "$#" )); do
 done
 
 case $CMD in
+
+  help)
+      print_help_msg
+      exit 0
+      ;;
 
    createdb)
       createdb $PARAMS
