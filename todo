@@ -10,6 +10,9 @@ else
    DB=$HOME/.todo-db.sql
 fi
 
+# If user chose createdb, we force a PWD database file
+DB=.todo-db.sql
+
 # If the file does not exist, then error out.
 if [ ! -f "$DB" ] && [ "$1" != "createdb" ]; then
    echo "No database file found. Use the 'createdb' command to create one"
